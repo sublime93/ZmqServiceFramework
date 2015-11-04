@@ -1,6 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Dynamic;
 using System.Linq;
+using System.Reflection;
+using System.Runtime.Remoting.Messaging;
+using System.Runtime.Remoting.Proxies;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -34,21 +38,21 @@ namespace Client
                 Console.WriteLine("Sending user");
 
 
-                var msg = new NetMQMessage();
-                msg.Append("AddUser");
-                msg.Append(bytes);
+                var p = ServiceProxy<IService>.Create(client);
 
-                client.SendMultipartMessage(msg);
 
-                //client.SendFrame(bytes);
+                //p.AddUser(user);
 
-                var message = client.ReceiveFrameBytes();
+                var u = p.GetUser("sdf");
 
-                var newUser = ser.UnpackSingleObject(message);
 
-                Console.WriteLine("Received {0}", newUser.Password);
+
+                Console.WriteLine("Received {0}", u.Password);
             }
 
         }
     }
+
+
+    
 }

@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Threading;
 using Common;
 using DataContracts;
 
@@ -13,7 +9,7 @@ namespace Worker
         public void AddUser(User user)
         {
             //Adding user
-            System.Threading.Thread.Sleep(100);
+            Thread.Sleep(100);
         }
 
         public User GetUser(string username)
@@ -22,7 +18,8 @@ namespace Worker
             {
                 Username = username,
                 FirstName =  "First",
-                LastName = "Last"
+                LastName = "Last",
+                Password = "Super secrete password"
             };
         }
     }

@@ -1,4 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using System.Text;
 using System.Threading;
 using Common;
 using DataContracts;
@@ -12,6 +16,8 @@ namespace Worker
         static void Main(string[] args)
         {
             IService service = new Service();
+            var signatures = SignatureGenerator.GetSignatureList(service.GetType());
+
 
             var ser = MessagePackSerializer.Get<User>();
 
@@ -26,33 +32,28 @@ namespace Worker
                 {
                     var msg = server.ReceiveMultipartMessage();
 
-                    if (msg.FrameCount == 2)
-                    {
-                        var method = msg[0].ConvertToString();
-                        var user = ser.UnpackSingleObject(msg[1].ToByteArray());
+                    var methodName = msg.Pop().ConvertToString(); //Method signature
+                    var method = signatures[methodName]; //Get method from list
+                    var paramList = new List<object>();
 
-                        typeof (Service).GetMethod(method).Invoke(service, new object[] {user});
+                    var parameters = method.GetParameters();
+
+                    if (parameters.Count() != msg.FrameCount) throw new Exception("Invalid parameters");
+
+                    for (var i = 0; i < parameters.Count(); i++)
+                    {
+                        var deSer = MessagePackSerializer.Get(parameters[i].ParameterType);
+                        var obj = deSer.UnpackSingleObject(msg.Pop().ToByteArray());
+                        paramList.Add(obj);
                     }
 
+                    var response = method.Invoke(service, paramList.ToArray());
 
+                    var respMessage = ser.PackSingleObject((User)response);
+
+                    server.SendFrame(respMessage);
                 }
 
-
-                //while (true)
-                //{
-                //    var message = server.ReceiveFrameBytes();
-                //    var user = ser.UnpackSingleObject(message);
-
-                //    Console.WriteLine("Received {0}", user.Username);
-
-                //    user.Password = "asdfas";
-
-                //    // processing the request
-                //    Thread.Sleep(100);
-
-                //    Console.WriteLine("Sending password");
-                //    server.SendFrame(ser.PackSingleObject(user));
-                //}
             }
 
         }

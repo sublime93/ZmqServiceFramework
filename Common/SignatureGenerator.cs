@@ -21,6 +21,12 @@ namespace Common
             }
 
             return dict;
-        } 
+        }
+
+        public static string GetMethodHash(MethodInfo m)
+        {
+            var hashString = m.GetParameters().Aggregate(m.Name, (current, p) => current + (p.ParameterType.Name));
+            return HashFactory.Hash64.CreateMurmur2().ComputeString(hashString, Encoding.ASCII).ToString();
+        }
     }
 }
