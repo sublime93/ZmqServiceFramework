@@ -15,7 +15,7 @@ namespace Common
 
             foreach (var m in type.GetMethods())
             {
-                var hashString = m.GetParameters().Aggregate(m.Name, (current, p) => current + (p.Name + p.ParameterType.Name));
+                var hashString = m.GetParameters().Aggregate(m.Name, (current, p) => current + (p.ParameterType.Name));
 
                 dict.Add(HashFactory.Hash64.CreateMurmur2().ComputeString(hashString, Encoding.ASCII).ToString(), m);
             }
