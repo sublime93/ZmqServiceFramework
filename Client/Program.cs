@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Common;
 using DataContracts;
 using MsgPack.Serialization;
 using NetMQ;
@@ -15,7 +16,7 @@ namespace Client
         static void Main(string[] args)
         {
 
-
+            
             var user = new User();
             user.Username = "FBar";
             user.FirstName = "Foo";
@@ -30,18 +31,22 @@ namespace Client
             {
                 client.Connect("tcp://localhost:5555");
 
-                for (int i = 0; i < 10; i++)
-                {
-                    Console.WriteLine("Sending user");
+                Console.WriteLine("Sending user");
 
-                    client.SendFrame(bytes);
 
-                    var message = client.ReceiveFrameBytes();
+                var msg = new NetMQMessage();
+                msg.Append("AddUser");
+                msg.Append(bytes);
 
-                    var newUser = ser.UnpackSingleObject(message);
+                client.SendMultipartMessage(msg);
 
-                    Console.WriteLine("Received {0}", newUser.Password);
-                }
+                //client.SendFrame(bytes);
+
+                var message = client.ReceiveFrameBytes();
+
+                var newUser = ser.UnpackSingleObject(message);
+
+                Console.WriteLine("Received {0}", newUser.Password);
             }
 
         }
