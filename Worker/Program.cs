@@ -16,11 +16,8 @@ namespace Worker
         static void Main(string[] args)
         {
             IService service = new Service();
+            ISerializer serializer = new Serializer();
             var signatures = SignatureGenerator.GetSignatureList(service.GetType());
-
-
-            var ser = MessagePackSerializer.Get<User>();
-
 
             using (var context = NetMQContext.Create())
             using (var server = context.CreateResponseSocket())
@@ -42,14 +39,13 @@ namespace Worker
 
                     for (var i = 0; i < parameters.Count(); i++)
                     {
-                        var deSer = MessagePackSerializer.Get(parameters[i].ParameterType);
-                        var obj = deSer.UnpackSingleObject(msg.Pop().ToByteArray());
+                        var obj = serializer.Deserialize(parameters[i].ParameterType, msg.Pop().ToByteArray());
                         paramList.Add(obj);
                     }
 
                     var response = method.Invoke(service, paramList.ToArray());
 
-                    var respMessage = ser.PackSingleObject((User)response);
+                    var respMessage = serializer.Serialize(response);
 
                     server.SendFrame(respMessage);
                 }

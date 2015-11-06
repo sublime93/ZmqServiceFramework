@@ -35,6 +35,10 @@
       <HintPath>..\packages\HashLib.2.0.1\lib\net40\HashLib.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="MsgPack, Version=0.6.0.0, Culture=neutral, PublicKeyToken=a2625990d5dc0167, processorArchitecture=MSIL">
+      <HintPath>..\packages\MsgPack.Cli.0.6.5\lib\net45\MsgPack.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -45,9 +49,11 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ISerializer.cs" />
     <Compile Include="IService.cs" />
     <Compile Include="MessageHeader.cs" />
     <Compile Include="MethodCallHeader.cs" />
+    <Compile Include="Serializer.cs" />
     <Compile Include="SignatureGenerator.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

@@ -17,16 +17,25 @@ namespace Client
 
     public class ServiceProxy<T> : RealProxy
     {
-        public RequestSocket Client { get; set; }
+        public NetMQContext Context { get; set; }
+        public string EndpointAddress { get; set; }
+        public ISerializer Serializer { get; set; }
 
-        private ServiceProxy(RequestSocket client) : base(typeof(T))
+        public ServiceProxy(NetMQContext context, string endpointAddress, ISerializer serializer) : base(typeof(T))
         {
-            Client = client;
+            EndpointAddress = endpointAddress;
+            Context = context;
+            Serializer = serializer;
         }
 
-        public static T Create(RequestSocket client)
+        public static T Create(NetMQContext context, string endpointAddress, ISerializer serializer)
         {
-            return (T)new ServiceProxy<T>(client).GetTransparentProxy();
+            return (T)new ServiceProxy<T>(context, endpointAddress, serializer).GetTransparentProxy();
+        }
+
+        public T Create()
+        {
+            return (T)GetTransparentProxy();
         }
 
         public override IMessage Invoke(IMessage msg)
@@ -36,94 +45,43 @@ namespace Client
 
             try
             {
-                Console.WriteLine("Before invoke: " + method.Name);
-
-
-                var netMqMsg = new NetMQMessage();
-                netMqMsg.Append(SignatureGenerator.GetMethodHash(method));
-
-                foreach (var arg in methodCall.Args)
+                using (var client = Context.CreateRequestSocket())
                 {
-                    //Get serializer for type
-                    var ser = MessagePackSerializer.Get(arg.GetType());
+                    client.Connect(EndpointAddress); //Connect to open new request socket
 
-                    //Serialize 
-                    var bytes = ser.PackSingleObject(arg);
+                    var netMqMsg = new NetMQMessage();
+                    netMqMsg.Append(SignatureGenerator.GetMethodHash(method));
 
-                    //Append as new frame
-                    netMqMsg.Append(bytes);
+                    foreach (var arg in methodCall.Args)
+                    {
+                        //Serialize and append as new frame
+                        netMqMsg.Append(Serializer.Serialize(arg));
+                    }
+
+                    //Send message
+                    client.SendMultipartMessage(netMqMsg);
+
+                    if (method.ReturnType != typeof(void))
+                    {
+                        //Wait for response
+                        var responseBytes = client.ReceiveFrameBytes();
+                        var response = Serializer.Deserialize(method.ReturnType, responseBytes);
+
+                        return new ReturnMessage(response, null, 0, methodCall.LogicalCallContext, methodCall);
+                    }
+
+                    return new ReturnMessage(null, null); //return nothing because message return type is void
                 }
-
-                //Send message
-                Client.SendMultipartMessage(netMqMsg);
-
-                if (method.ReturnType != typeof(void))
-                {
-
-                    //Wait for response
-                    var responseBytes = Client.ReceiveFrameBytes();
-                    var deSer = MessagePackSerializer.Get(method.ReturnType);
-                    var response = deSer.UnpackSingleObject(responseBytes);
-
-                    return new ReturnMessage(response, null, 0, methodCall.LogicalCallContext, methodCall);
-                }
-
-
-                Console.WriteLine("After invoke: " + method.Name);
-                return new ReturnMessage(null, null);
-                
             }
             catch (Exception e)
             {
-                Console.WriteLine("Exception: " + e);
                 if (e is TargetInvocationException && e.InnerException != null)
                 {
-                    return new ReturnMessage(e.InnerException, msg as IMethodCallMessage);
+                    return new ReturnMessage(e.InnerException, (IMethodCallMessage) msg);
                 }
 
-                return new ReturnMessage(e, msg as IMethodCallMessage);
+                return new ReturnMessage(e, (IMethodCallMessage) msg);
             }
         }
     }
-
-
-    //public class ServiceProxy<T> : RealProxy
-    //{
-    //    private readonly T _instance;
-
-    //    private ServiceProxy(T instance)
-    //        : base(typeof(T))
-    //    {
-    //        _instance = instance;
-    //    }
-
-    //    public static T Create(T instance)
-    //    {
-    //        return (T)new ServiceProxy<T>(instance).GetTransparentProxy();
-    //    }
-
-    //    public override IMessage Invoke(IMessage msg)
-    //    {
-    //        var methodCall = (IMethodCallMessage)msg;
-    //        var method = (MethodInfo)methodCall.MethodBase;
-
-    //        try
-    //        {
-    //            Console.WriteLine("Before invoke: " + method.Name);
-    //            var result = method.Invoke(_instance, methodCall.InArgs);
-    //            Console.WriteLine("After invoke: " + method.Name);
-    //            return new ReturnMessage(result, null, 0, methodCall.LogicalCallContext, methodCall);
-    //        }
-    //        catch (Exception e)
-    //        {
-    //            Console.WriteLine("Exception: " + e);
-    //            if (e is TargetInvocationException && e.InnerException != null)
-    //            {
-    //                return new ReturnMessage(e.InnerException, msg as IMethodCallMessage);
-    //            }
-
-    //            return new ReturnMessage(e, msg as IMethodCallMessage);
-    //        }
-    //    }
-    //}
 }

@@ -19,35 +19,28 @@ namespace Client
     {
         static void Main(string[] args)
         {
-
-            
             var user = new User();
             user.Username = "FBar";
             user.FirstName = "Foo";
             user.LastName = "Bar";
 
-            var ser = MessagePackSerializer.Get<User>();
-            var bytes = ser.PackSingleObject(user);
-
-
             using (var context = NetMQContext.Create())
-            using (var client = context.CreateRequestSocket())
             {
-                client.Connect("tcp://localhost:5555");
+
 
                 Console.WriteLine("Sending user");
 
+                var p = new Proxy<IService>(context, "tcp://localhost:5555");
 
-                var p = ServiceProxy<IService>.Create(client);
+                p.Service.AddUser(user);
+
+                for (var i = 0; i < 10; i++)
+                {
+                    var u = p.Service.GetUser("sdf");
+                    Console.WriteLine("Received {0}", u.Password);
+                }
 
 
-                //p.AddUser(user);
-
-                var u = p.GetUser("sdf");
-
-
-
-                Console.WriteLine("Received {0}", u.Password);
             }
 
         }
